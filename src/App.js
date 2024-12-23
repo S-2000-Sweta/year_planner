@@ -35,6 +35,7 @@ const App = () => {
   const [isModalVisible, setModalVisible] = useState(false);
   const [activeView, setActiveView] = useState("daily");
   const [activeMonth, setActiveMonth] = useState(moment().format("YYYY-MM"));
+  const [selectedEventId, setSelectedEventId] = useState(null); // To store the ID of the event being updated
 
   const holidays = [
     { date: "2024-12-25", name: "Christmas Day" },
@@ -49,29 +50,40 @@ const App = () => {
       const payload = {
         eventDate: selectedDate.format("YYYY-MM-DD"),
       };
+  
       try {
-        const eventList = await fetchEvents(payload);
-        const eventsByDate = eventList.reduce((acc, event) => {
-          const date = event.date;
-          if (!acc[date]) {
-            acc[date] = [];
-          }
-          acc[date].push(event);
-          return acc;
-        }, {});
-        setEvents(eventsByDate);
+        const response = await fetchEvents(payload);
+        if (response.code === 200) {
+          const eventList = response.data;
+          const eventsByDate = eventList.reduce((acc, event) => {
+            const date = moment(event.eventDate).format("YYYY-MM-DD"); // Format the date to compare
+            if (!acc[date]) {
+              acc[date] = [];
+            }
+            acc[date].push(event);
+            return acc;
+          }, {});
+  
+          setEvents(eventsByDate);
+        }
       } catch (error) {
         console.error("Error fetching events:", error);
         message.error("Failed to fetch events.");
       }
     };
-    loadEvents()
+  
+    loadEvents();
+    console.log("Updated Events State:", events); // Debugging to check updated events
   }, [selectedDate]);
-
+  
   const handleDateSelect = (date) => {
     setSelectedDate(date);
 
   };
+  useEffect(() => {
+    console.log("Updated Events State:", events);
+  }, [events]);
+  
 
   const handleSaveEvent = async () => {
     const { name, place, startTime, endTime, description } = eventData;
@@ -154,31 +166,113 @@ const App = () => {
     const selectedMoment = selectedDate;
     const eventDates = Object.keys(events);
     const filteredEvents = [];
-
+  
     eventDates.forEach((date) => {
       const eventMoment = moment(date);
-
+  
       if (activeView === "daily" && eventMoment.isSame(selectedMoment, "day")) {
         filteredEvents.push(...events[date]);
       } else if (
         activeView === "weekly" &&
-        eventMoment.isSame(selectedMoment, "week")
+        eventMoment.isBetween(
+          selectedMoment.clone().startOf("week"),
+          selectedMoment.clone().endOf("week"),
+          null,
+          "[]"
+        )
       ) {
         filteredEvents.push(...events[date]);
       } else if (
-        activeView === "monthly" &&
+        activeView === "daily" &&
         eventMoment.isSame(selectedMoment, "month")
       ) {
         filteredEvents.push(...events[date]);
       }
     });
-
+  
     return filteredEvents;
   };
+  
+  const handleDeleteEvent = async (eventId) => {
+    try {
+      const response = await deleteEvent(eventId); // Call your API to delete the event
+      if (response.code === 200) {
+        // Remove the event from the state after successful deletion
+        const updatedEvents = { ...events };
+        Object.keys(updatedEvents).forEach((date) => {
+          updatedEvents[date] = updatedEvents[date].filter(
+            (event) => event._id !== eventId
+          );
+        });
+        setEvents(updatedEvents);
+        message.success("Event deleted successfully!");
+      } else {
+        message.error("Failed to delete event.");
+      }
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      message.error("Failed to delete event.");
+    }
+  };
+
+  const handleUpdateEvent = (event) => {
+    setEventData({
+      name: event.eventName,
+      place: event.place,
+      startTime: event.eventTime.split(" - ")[0],
+      endTime: event.eventTime.split(" - ")[1],
+      description: event.eventDescription,
+      image: event.image || null,
+    });
+    setSelectedEventId(event._id);  // Set the selected event ID
+    setModalVisible(true);           // Open the update modal
+  };
+  
+  
+  const handleSaveUpdatedEvent = async () => {
+    const { name, place, startTime, endTime, description, image } = eventData;
+  
+    // Validate mandatory fields
+    if (!name || !place || !startTime || !endTime || !description) {
+      message.error("Please fill in all required fields.");
+      return;
+    }
+  
+    const updatedEvent = {
+      eventName: name,
+      eventDescription: description,
+      eventTime: `${startTime} - ${endTime}`,
+      place,
+      eventDate: selectedDate.format("YYYY-MM-DD"),
+      image, // Optionally update the image
+    };
+  
+    try {
+      const response = await updateEvent(selectedEventId, updatedEvent); // Call API to update the event
+      if (response.code === 200) {
+        // Update the events state with the new event details
+        const updatedEvents = { ...events };
+        Object.keys(updatedEvents).forEach((date) => {
+          updatedEvents[date] = updatedEvents[date].map((event) =>
+            event._id === selectedEventId ? { ...event, ...updatedEvent } : event
+          );
+        });
+        setEvents(updatedEvents);
+        message.success("Event updated successfully!");
+        setModalVisible(false); // Close the modal after update
+      } else {
+        message.error("Failed to update event.");
+      }
+    } catch (error) {
+      console.error("Error updating event:", error);
+      message.error("Failed to update event.");
+    }
+  };
+  
 
   const renderEventList = () => {
-    const filteredEvents = filterEvents();
-
+    const filteredEvents = filterEvents(); // Get the events based on the selected view
+  
     return (
       <div
         style={{
@@ -240,13 +334,35 @@ const App = () => {
         <List
           size="small"
           bordered
-          dataSource={filteredEvents}
+          dataSource={filteredEvents} // Pass filtered events based on the selected view
           renderItem={(event, index) => (
             <List.Item key={index}>
               <div style={{ fontSize: "1.2em" }}>
-                <strong>{event.name}</strong> at {event.place} (
-                {event.startTime} - {event.endTime})
-                <div>{event.description}</div>
+                <strong>{event.eventName || "Unnamed Event"}</strong>
+                <div>
+                  <strong>Place:</strong> {event.place || "Unknown Place"}
+                </div>
+                <div>
+                  <strong>Time:</strong> {event.eventTime || "Unknown Time"}
+                </div>
+                <div>
+                  <strong>Description:</strong> {event.eventDescription || "No description provided."}
+                </div>
+                <div style={{ marginTop: "10px" }}>
+                  <Button
+                    type="primary"
+                    onClick={() => handleUpdateEvent(event)} // Trigger the update modal
+                  >
+                    Update
+                  </Button>
+                  <Button
+                    type="danger"
+                    onClick={() => handleDeleteEvent(event._id)} // Trigger the delete
+                    style={{ marginLeft: "10px" }}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
             </List.Item>
           )}
@@ -254,7 +370,7 @@ const App = () => {
       </div>
     );
   };
-
+  
   const renderHolidayList = () => {
     const activeMonthHolidays = holidays.filter((holiday) =>
       holiday.date.startsWith(activeMonth)
@@ -319,61 +435,74 @@ const App = () => {
       </Row>
 
       <Modal
-        title="Add Event"
-        visible={isModalVisible}
-        onCancel={() => setModalVisible(false)}
-        onOk={handleSaveEvent}
-        okText="Save Event"
-        cancelText="Cancel"
-      >
-        <Input
-          placeholder="Event Name"
-          value={eventData.name}
-          name="name"
-          onChange={handleInputChange}
-          style={{ marginBottom: "10px" }}
-        />
-        <Input
-          placeholder="Event Place"
-          value={eventData.place}
-          name="place"
-          onChange={handleInputChange}
-          style={{ marginBottom: "10px" }}
-        />
-        <TimePicker
-          placeholder="Start Time"
-          value={
-            eventData.startTime ? moment(eventData.startTime, "h:mm A") : null
-          }
-          onChange={(time) =>
-            setEventData({ ...eventData, startTime: time.format("h:mm A") })
-          }
-          style={{ marginBottom: "10px", width: "100%" }}
-          use12Hours
-          format="h:mm A"
-        />
-        <TimePicker
-          placeholder="End Time"
-          value={eventData.endTime ? moment(eventData.endTime, "h:mm A") : null}
-          onChange={(time) =>
-            setEventData({ ...eventData, endTime: time.format("h:mm A") })
-          }
-          style={{ marginBottom: "10px", width: "100%" }}
-          use12Hours
-          format="h:mm A"
-        />
-        <TextArea
-          placeholder="Event Description"
-          value={eventData.description}
-          name="description"
-          onChange={handleInputChange}
-          rows={4}
-          style={{ marginBottom: "10px" }}
-        />
-        <Upload beforeUpload={() => false} onChange={handleImageUpload}>
-          <Button icon={<UploadOutlined />}>Upload Image</Button>
-        </Upload>
-      </Modal>
+  title="Update Event"
+  visible={isModalVisible}
+  onCancel={() => setModalVisible(false)}
+  onOk={handleSaveUpdatedEvent} // Call the function to update the event
+  okText="Save Event"
+  cancelText="Cancel"
+>
+  <Input
+    placeholder="Event Name"
+    value={eventData.name}
+    name="name"
+    onChange={handleInputChange}
+    style={{ marginBottom: "10px" }}
+  />
+  <Button
+              type="default"
+              icon={<ShareAltOutlined />}
+              onClick={shareEventDetails}
+            >
+              Share
+            </Button>
+  <Input
+    placeholder="Event Place"
+    value={eventData.place}
+    name="place"
+    onChange={handleInputChange}
+    style={{ marginBottom: "10px" }}
+  />
+  <TimePicker
+    placeholder="Start Time"
+    value={eventData.startTime ? moment(eventData.startTime, "h:mm A") : null}
+    onChange={(time) =>
+      setEventData({ ...eventData, startTime: time.format("h:mm A") })
+    }
+    style={{ marginBottom: "10px", width: "100%" }}
+    use12Hours
+    format="h:mm A"
+  />
+  <TimePicker
+    placeholder="End Time"
+    value={eventData.endTime ? moment(eventData.endTime, "h:mm A") : null}
+    onChange={(time) =>
+      setEventData({ ...eventData, endTime: time.format("h:mm A") })
+    }
+    style={{ marginBottom: "10px", width: "100%" }}
+    use12Hours
+    format="h:mm A"
+  />
+  <TextArea
+    placeholder="Event Description"
+    value={eventData.description}
+    name="description"
+    onChange={handleInputChange}
+    rows={4}
+    style={{ marginBottom: "10px" }}
+  />
+  <Upload beforeUpload={() => false} onChange={handleImageUpload}>
+    <Button icon={<UploadOutlined />}>Upload Image</Button>
+    <Button
+              type="default"
+              icon={<ShareAltOutlined />}
+              onClick={shareEventDetails}
+            >
+              Share
+            </Button>
+  </Upload>
+</Modal>
+
     </div>
   );
 };
