@@ -11,6 +11,7 @@ import {
   Upload,
   TimePicker,
   message,
+  Popconfirm,
 } from "antd";
 import {
   UploadOutlined,
@@ -200,6 +201,15 @@ const App = () => {
     }
   };
 
+  const confirmDelete = (eventId) => {
+    handleDeleteEvent(eventId);
+    message.success('Event deleted successfully!');
+  };
+
+  const cancelDelete = () => {
+    message.info('Delete action cancelled');
+  };
+
   const handleUpdateEvent = (event) => {
     setEventData({
       name: event.eventName,
@@ -326,40 +336,60 @@ const App = () => {
             Monthly
           </Button>
         </div>
-        <List
-          size="small"
-          bordered
-          dataSource={filteredEvents} // Pass filtered events based on the selected view
-          renderItem={(event, index) => (
-            <List.Item key={index}>
-              <div style={{ fontSize: "1.2em" }}>
-                <strong>{event.eventName || "Unnamed Event"}</strong>
-                <div>
-                  <strong>Time:</strong> {event.eventTime || "Unknown Time"}
+        <div
+          style={{
+            maxHeight: "300px", // Adjust this to set the maximum height
+            overflowY: "auto", // Enables scrolling when content exceeds maxHeight
+            border: "1px solid #f0f0f0",
+            borderRadius: "8px",
+            padding: "10px",
+          }}
+        >
+          <List
+            size="small"
+            dataSource={filteredEvents}
+            renderItem={(event, index) => (
+              <List.Item key={index}>
+                <div style={{ fontSize: "1.2em" }}>
+                  <strong>{event.eventName || "Unnamed Event"}</strong>
+                  <div>
+                    <strong>Time:</strong> {event.eventTime || "Unknown Time"}
+                  </div>
+                  <div>
+                    <strong>Description:</strong>{" "}
+                    {event.eventDescription || "No description provided."}
+                  </div>
+                  <div style={{ marginTop: "10px" }}>
+                    <Button
+                      type="primary"
+                      onClick={() => handleUpdateEvent(event)}
+                    >
+                      Update
+                    </Button>
+                    {/* <Button
+                      type="danger"
+                      onClick={() => handleDeleteEvent()}
+                      style={{ marginLeft: "10px" }}
+                    >
+                      Delete
+                    </Button> */}
+                    <Popconfirm
+                      title="Are you sure you want to delete this event?"
+                      onConfirm={() => confirmDelete(event._id)}
+                      onCancel={cancelDelete}
+                      okText="Yes"
+                      cancelText="No"
+                    >
+                      <Button color="danger" variant="solid" style={{ marginLeft: "10px" }}>
+                        Delete
+                      </Button>
+                    </Popconfirm>
+                  </div>
                 </div>
-                <div>
-                  <strong>Description:</strong>{" "}
-                  {event.eventDescription || "No description provided."}
-                </div>
-                <div style={{ marginTop: "10px" }}>
-                  <Button
-                    type="primary"
-                    onClick={() => handleUpdateEvent(event)} // Trigger the update modal
-                  >
-                    Update
-                  </Button>
-                  <Button
-                     type="danger"
-                    onClick={() => handleDeleteEvent(event._id)} // Trigger the delete
-                    style={{ marginLeft: "10px" }}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </List.Item>
-          )}
-        />
+              </List.Item>
+            )}
+          />
+        </div>
       </div>
     );
   };
@@ -444,14 +474,15 @@ const App = () => {
           name="name"
           onChange={handleInputChange}
           style={{ marginBottom: "10px" }}
-        /><Button
-        type="primary"
-        icon={<ShareAltOutlined />}
-        onClick={shareEventDetails}
-      >
-        Share
-      </Button>
-        
+        />
+        <Button
+          type="primary"
+          icon={<ShareAltOutlined />}
+          onClick={shareEventDetails}
+        >
+          Share
+        </Button>
+
         <TimePicker
           placeholder="Start Time"
           value={
@@ -485,12 +516,12 @@ const App = () => {
         <Upload beforeUpload={() => false} onChange={handleImageUpload}>
           <Button icon={<UploadOutlined />}>Upload Image</Button>
           <Button
-              type="primary"
-              icon={<ShareAltOutlined />}
-              onClick={shareEventDetails}
-            >
-              Share
-            </Button>
+            type="primary"
+            icon={<ShareAltOutlined />}
+            onClick={shareEventDetails}
+          >
+            Share
+          </Button>
         </Upload>
       </Modal>
     </div>
