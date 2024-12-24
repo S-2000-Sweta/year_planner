@@ -298,7 +298,7 @@ const App = () => {
               Add Event
             </Button>
             <Button
-              type="default"
+              type="primary"
               icon={<ShareAltOutlined />}
               onClick={shareEventDetails}
             >
@@ -349,7 +349,7 @@ const App = () => {
                     Update
                   </Button>
                   <Button
-                    type="danger"
+                     type="danger"
                     onClick={() => handleDeleteEvent(event._id)} // Trigger the delete
                     style={{ marginLeft: "10px" }}
                   >
@@ -444,7 +444,14 @@ const App = () => {
           name="name"
           onChange={handleInputChange}
           style={{ marginBottom: "10px" }}
-        />
+        /><Button
+        type="primary"
+        icon={<ShareAltOutlined />}
+        onClick={shareEventDetails}
+      >
+        Share
+      </Button>
+        
         <TimePicker
           placeholder="Start Time"
           value={
@@ -477,6 +484,13 @@ const App = () => {
         />
         <Upload beforeUpload={() => false} onChange={handleImageUpload}>
           <Button icon={<UploadOutlined />}>Upload Image</Button>
+          <Button
+              type="primary"
+              icon={<ShareAltOutlined />}
+              onClick={shareEventDetails}
+            >
+              Share
+            </Button>
         </Upload>
       </Modal>
     </div>
