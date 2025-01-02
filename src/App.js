@@ -73,7 +73,26 @@ const App = () => {
   useEffect(() => {
     loadEvents();
   }, [selectedDate]);
-
+  
+  const renderDateCell = (value) => {
+    const dateStr = value.format("YYYY-MM-DD");
+  
+    // Check if the date has events
+    const hasEvents = events[dateStr] && events[dateStr].length > 0;
+  
+    // Check if the date is a holiday
+    const isHoliday = holidays.some((holiday) => holiday.date === dateStr);
+  
+    // Render custom content for dates with events or holidays
+    // return (
+    //   <div>
+    //     <div>{value.date()}</div>
+    //     {hasEvents && <div style={{ color: "blue" }}>📅</div>}
+    //     {isHoliday && <div style={{ color: "red" }}>🎉</div>}
+    //   </div>
+    // );
+  };
+  
   const handleDateSelect = (date) => {
     setSelectedDate(date);
   };
@@ -223,23 +242,21 @@ const App = () => {
   };
 
   const handleSaveUpdatedEvent = async () => {
-    const { name, startTime, endTime, description } = eventData;
-
+    const { name, description } = eventData;
+  
     // Validate mandatory fields
-    if (!name || !startTime || !endTime || !description) {
+    if (!name || !description) {
       message.error("Please fill in all required fields.");
       return;
     }
-
+  
     const updatedEvent = {
       eventName: name,
       eventDescription: description,
-      startTime,
-      endTime,
       eventDate: selectedDate.format("YYYY-MM-DD"),
       image: eventData.image, // Include optional image
     };
-
+  
     try {
       const response = await updateEvent(selectedEventId, updatedEvent); // Use the update API
       if (response.code === 200) {
@@ -263,6 +280,7 @@ const App = () => {
       message.error("Failed to update event.");
     }
   };
+  
 
   const resetForm = () => {
     setEventData({
@@ -446,9 +464,37 @@ const App = () => {
             }}
           >
             <Calendar
-              onSelect={handleDateSelect}
-              onPanelChange={(date) => setActiveMonth(date.format("YYYY-MM"))}
-            />
+  onSelect={handleDateSelect}
+  onPanelChange={(date) => setActiveMonth(date.format("YYYY-MM"))}
+  dateCellRender={(date) => {
+    const formattedDate = date.format("YYYY-MM-DD");
+
+    // Check for events on the current date
+    const eventsForDate = events[formattedDate] || [];
+
+    // Check for holidays on the current date
+    const holiday = holidays.find((h) => h.date === formattedDate);
+
+    return (
+      <div>
+        {/* Render events */}
+        {eventsForDate.map((event, index) => (
+          <div key={index} style={{ color: "blue",textAlign:'right',fontSize: '12px' }}>
+            <p><b style={{fontSize:'14px'}}>{event.eventName}</b><br/>({event.eventTime})</p>
+          </div>
+        ))}
+
+        {/* Render holiday */}
+        {holiday && (
+          <div style={{ color: "red", fontWeight: "bolder",textAlign:'right',fontSize: '12px' }}>
+            {holiday.name}
+          </div>
+        )}
+      </div>
+    );
+  }}
+/>
+
           </div>
         </Col>
         <Col xs={24} md={12}>
@@ -484,27 +530,31 @@ const App = () => {
         </Button>
 
         <TimePicker
-          placeholder="Start Time"
-          value={
-            eventData.startTime ? moment(eventData.startTime, "h:mm A") : null
-          }
-          onChange={(time) =>
-            setEventData({ ...eventData, startTime: time.format("h:mm A") })
-          }
-          style={{ marginBottom: "10px", width: "100%" }}
-          use12Hours
-          format="h:mm A"
-        />
-        <TimePicker
-          placeholder="End Time"
-          value={eventData.endTime ? moment(eventData.endTime, "h:mm A") : null}
-          onChange={(time) =>
-            setEventData({ ...eventData, endTime: time.format("h:mm A") })
-          }
-          style={{ marginBottom: "10px", width: "100%" }}
-          use12Hours
-          format="h:mm A"
-        />
+  placeholder="Start Time"
+  value={
+    eventData.startTime ? moment(eventData.startTime, "h:mm A") : null
+  }
+  onChange={(time) =>
+    setEventData({ ...eventData, startTime: time.format("h:mm A") })
+  }
+  style={{ marginBottom: "10px", width: "100%" }}
+  use12Hours
+  format="h:mm A"
+  disabled={!!selectedEventId} // Disable field during update
+/>
+
+<TimePicker
+  placeholder="End Time"
+  value={eventData.endTime ? moment(eventData.endTime, "h:mm A") : null}
+  onChange={(time) =>
+    setEventData({ ...eventData, endTime: time.format("h:mm A") })
+  }
+  style={{ marginBottom: "10px", width: "100%" }}
+  use12Hours
+  format="h:mm A"
+  disabled={!!selectedEventId} // Disable field during update
+/>
+
         <TextArea
           placeholder="Event Description"
           value={eventData.description}

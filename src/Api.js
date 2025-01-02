@@ -4,7 +4,7 @@ import axios from 'axios';
 const API_BASE_URL = 'https://nirmalya.store/way2wins';
 
 // Function to get the token (replace with your own method to retrieve the token)
-const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFiaGlsYXNoQGJsb29tc21vYmlsaXR5LmNvbSIsImlkIjoiNjcxZjVlZTQ0OTVlZTJmNGE2ZjFkYWFiIiwicm9sZSI6IkFETUlOIiwibmFtZSI6IkFiaGlsYXNoLWFkbWluIiwiaWF0IjoxNzM0OTU0NzUwLCJleHAiOjE3MzUwNDExNTB9.WPpeUT1cxOo9xq5yV6FZ8OC3YP-nPDgCuxU2CwMq-64";
+const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFiaGlsYXNoQGJsb29tc21vYmlsaXR5LmNvbSIsImlkIjoiNjcxZjVlZTQ0OTVlZTJmNGE2ZjFkYWFiIiwicm9sZSI6IkFETUlOIiwibmFtZSI6IkFiaGlsYXNoLWFkbWluIiwiaWF0IjoxNzM1ODA5NjE3LCJleHAiOjE3MzU4OTYwMTd9.RpMnQqYBr5oOLrzGwwf8WoYZj0BUz5QN_KT3AnPRxP4";
 
 // Axios instance
 const apiClient = axios.create({
